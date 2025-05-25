@@ -25,17 +25,12 @@ struct Args {
 }
 
 #[derive(Serialize)]
-struct PortEntry {
+struct FlatConnection {
+    host: String,
     port: u16,
     unique_ips: Vec<String>,
     count: usize,
     timestamp: String,
-}
-
-#[derive(Serialize)]
-struct TrackerOutput {
-    host: String,
-    connections: Vec<PortEntry>,
 }
 
 /// Convert hex to IPv4 address
@@ -74,7 +69,7 @@ fn parse_proc_net_tcp(path: &str, ports: &HashSet<u16>, is_ipv6: bool) -> HashMa
                     continue; // Only established connections
                 }
 
-                let (local_ip_hex, local_port_hex) = local_address.split_once(':').unwrap_or(("", ""));
+                let (_, local_port_hex) = local_address.split_once(':').unwrap_or(("", ""));
                 let (remote_ip_hex, _) = remote_address.split_once(':').unwrap_or(("", ""));
 
                 if let Ok(local_port) = u16::from_str_radix(local_port_hex, 16) {
@@ -120,27 +115,22 @@ fn main() {
 
         let timestamp = Utc::now().to_rfc3339();
 
-
-        let connections = results
-           .into_iter()
-           .map(|(port, ips)| {
+        let flat_output: Vec<FlatConnection> = results
+            .into_iter()
+            .map(|(port, ips)| {
                 let ip_list: Vec<String> = ips.into_iter().collect();
                 let count = ip_list.len();
-                PortEntry {
-                   port,
-                   unique_ips: ip_list,
-                   count,
-                   timestamp: timestamp.clone(),
+                FlatConnection {
+                    host: hostname.clone(),
+                    port,
+                    unique_ips: ip_list,
+                    count,
+                    timestamp: timestamp.clone(),
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        let output = TrackerOutput {
-            host: hostname.clone(),
-            connections,
-        };
-
-        if let Ok(json) = serde_json::to_string_pretty(&output) {
+        if let Ok(json) = serde_json::to_string_pretty(&flat_output) {
             if let Ok(mut file) = File::create(&args.output) {
                 let _ = file.write_all(json.as_bytes());
             }
