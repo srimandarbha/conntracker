@@ -1,0 +1,45 @@
+###############################################################################
+#                            INPUT PLUGIN                                     #
+###############################################################################
+[[inputs.kafka_consumer]]
+  brokers = ["localhost:9092"]          # Kafka broker
+  topics = ["your_kafka_topic"]         # Replace with your Kafka topic
+  group_id = "telegraf_group"
+  client_id = "telegraf"
+  offset = "latest"
+  max_message_len = 1000000
+  data_format = "json"
+
+  json_string_fields = ["host", "timestamp"]
+  json_time_key = "timestamp"
+  json_time_format = "2006-01-02T15:04:05Z07:00"
+  json_timestamp_units = "1ns"
+
+  tag_keys = ["host"]
+  name_override = "conntracker"
+
+###############################################################################
+#                            PROCESSOR PLUGIN                                 #
+###############################################################################
+[[processors.converter]]
+  namepass = ["conntracker"]
+  [processors.converter.fields]
+    tag = ["host"]
+    integer = ["count"]
+    drop = ["port", "unique_ips"] # Drop unnecessary fields
+
+# Optional: Rename fields (optional but recommended for clarity)
+[[processors.rename]]
+  namepass = ["conntracker"]
+  [[processors.rename.replace]]
+    field = "count"
+    dest = "connection_count"
+
+###############################################################################
+#                            OUTPUT PLUGIN                                    #
+###############################################################################
+[[outputs.influxdb_v2]]
+  urls = ["http://localhost:8086"]         # Change as per your setup
+  token = "your_token_here"                # Replace with your token
+  organization = "your_org"                # Replace with your org
+  bucket = "your_bucket"                   # Replace with your bucket
