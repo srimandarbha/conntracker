@@ -1,0 +1,12 @@
+[Unit]
+Description=Conntracker Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/conntracker --ports 4317,4318 --brokers localhost:9092 --topic conntracker
+Restart=always
+StandardOutput=file:/var/log/conntracker.log
+StandardError=file:/var/log/conntracker.err
+
+[Install]
+WantedBy=multi-user.target
